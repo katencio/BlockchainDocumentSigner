@@ -293,7 +293,7 @@ curl http://localhost:8545
 
 ## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+Este proyecto no tiene licencia de código abierto. Su uso está restringido a fines educativos únicamente.
 
 ## 👥 Kelvin Atencio
 
