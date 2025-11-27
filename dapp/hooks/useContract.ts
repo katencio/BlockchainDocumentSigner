@@ -4,14 +4,14 @@ import { ethers } from 'ethers';
 import { useMetaMask } from '@/contexts/MetaMaskContext';
 import { useMemo } from 'react';
 
-// ABI del contrato DocumentRegistry
+// ABI del contrato DocumentRegistry (optimizado)
 const CONTRACT_ABI = [
-  "function storeDocumentHash(bytes32 _hash, uint256 _timestamp, bytes memory _signature, address _signer) external",
-  "function getDocumentInfo(bytes32 _hash) external view returns (tuple(bytes32 hash, uint256 timestamp, address signer, bytes signature))",
+  "function storeDocumentHash(bytes32 _hash, uint256 _timestamp, bytes calldata _signature, address _signer) external",
+  "function getDocumentInfo(bytes32 _hash) external view returns (uint256 timestamp, address signer, bytes memory signature)",
   "function isDocumentStored(bytes32 _hash) external view returns (bool)",
   "function getDocumentCount() external view returns (uint256)",
   "function getDocumentHashByIndex(uint256 _index) external view returns (bytes32)",
-  "function verifyDocument(bytes32 _hash, address _signer, bytes memory _signature) external returns (bool)",
+  "function verifyDocument(bytes32 _hash, address _signer, bytes calldata _signature) external returns (bool)",
   "event DocumentStored(bytes32 indexed hash, address indexed signer, uint256 timestamp)",
   "event DocumentVerified(bytes32 indexed hash, address indexed signer, bool verified)"
 ];
@@ -57,12 +57,13 @@ export function useContract() {
       throw new Error('Contract not available');
     }
 
-    const doc = await contract.getDocumentInfo(hash);
+    // Ahora getDocumentInfo retorna (timestamp, signer, signature) en lugar de struct
+    const [timestamp, signer, signature] = await contract.getDocumentInfo(hash);
     return {
-      hash: doc.hash,
-      timestamp: doc.timestamp.toString(),
-      signer: doc.signer,
-      signature: doc.signature,
+      hash: hash, // El hash se pasa como parámetro, no se retorna del contrato
+      timestamp: timestamp.toString(),
+      signer: signer,
+      signature: signature,
     };
   };
 

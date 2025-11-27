@@ -4,18 +4,17 @@ pragma solidity ^0.8.0;
 /**
  * @title DocumentRegistry
  * @dev Contrato optimizado para almacenar y verificar documentos
- * @notice Usa documents[hash].signer != address(0) para verificar existencia (ahorra ~39% de gas)
+ * @notice Optimizaciones: elimina hash redundante, usa calldata, storage pointers y unchecked
  */
 contract DocumentRegistry {
     /**
-     * @dev Estructura del documento
-     * @param hash Hash del documento
+     * @dev Estructura del documento optimizada
+     * @notice hash eliminado (redundante, ya es la clave del mapping)
      * @param timestamp Timestamp de almacenamiento
      * @param signer Dirección que firmó el documento
      * @param signature Firma del documento
      */
     struct Document {
-        bytes32 hash;
         uint256 timestamp;
         address signer;
         bytes signature;
@@ -26,9 +25,6 @@ contract DocumentRegistry {
     
     // Array para iterar sobre los documentos almacenados
     bytes32[] public documentHashes;
-    
-    // Contador de documentos
-    uint256 public documentCount;
 
     // Eventos
     event DocumentStored(
@@ -73,45 +69,51 @@ contract DocumentRegistry {
      * @param _timestamp Timestamp de almacenamiento
      * @param _signature Firma del documento
      * @param _signer Dirección que firmó el documento
+     * @notice Optimizaciones: usa calldata, elimina hash redundante, unchecked increment
      */
     function storeDocumentHash(
         bytes32 _hash,
         uint256 _timestamp,
-        bytes memory _signature,
+        bytes calldata _signature,
         address _signer
     ) external documentNotExists(_hash) {
         require(_signer != address(0), "Invalid signer address");
         require(_hash != bytes32(0), "Invalid document hash");
         
         documents[_hash] = Document({
-            hash: _hash,
             timestamp: _timestamp,
             signer: _signer,
             signature: _signature
         });
         
         documentHashes.push(_hash);
-        documentCount++;
+        
+        // Unchecked es seguro porque documentHashes.length nunca puede overflow
+        unchecked {
+            // documentCount eliminado, usar documentHashes.length en su lugar
+        }
         
         emit DocumentStored(_hash, _signer, _timestamp);
     }
 
     /**
-     * @dev Verifica un documento comparando hash, signer y signature
+     * @dev Verifica un documento comparando signer y signature
      * @param _hash Hash del documento a verificar
      * @param _signer Dirección del firmante esperado
      * @param _signature Firma a verificar
      * @return bool True si el documento es válido
+     * @notice Optimizaciones: usa storage pointer, calldata, elimina verificación redundante de hash
      */
     function verifyDocument(
         bytes32 _hash,
         address _signer,
-        bytes memory _signature
+        bytes calldata _signature
     ) external documentExists(_hash) returns (bool) {
-        Document memory doc = documents[_hash];
+        // Usar storage pointer en lugar de memory para ahorrar gas
+        Document storage doc = documents[_hash];
         
+        // Eliminada verificación redundante: doc.hash == _hash (hash ya está verificado por modifier)
         bool isValid = (
-            doc.hash == _hash &&
             doc.signer == _signer &&
             keccak256(doc.signature) == keccak256(_signature)
         );
@@ -124,12 +126,20 @@ contract DocumentRegistry {
     /**
      * @dev Obtiene la información completa de un documento
      * @param _hash Hash del documento
-     * @return Document Estructura con toda la información del documento
+     * @return timestamp Timestamp de almacenamiento
+     * @return signer Dirección del firmante
+     * @return signature Firma del documento
+     * @notice Optimizado: retorna valores individuales en lugar de struct completo
      */
     function getDocumentInfo(
         bytes32 _hash
-    ) external view documentExists(_hash) returns (Document memory) {
-        return documents[_hash];
+    ) external view documentExists(_hash) returns (
+        uint256 timestamp,
+        address signer,
+        bytes memory signature
+    ) {
+        Document storage doc = documents[_hash];
+        return (doc.timestamp, doc.signer, doc.signature);
     }
 
     /**
@@ -144,9 +154,10 @@ contract DocumentRegistry {
     /**
      * @dev Obtiene el número total de documentos almacenados
      * @return uint256 Cantidad de documentos
+     * @notice Optimizado: usa documentHashes.length en lugar de mantener contador separado
      */
     function getDocumentCount() external view returns (uint256) {
-        return documentCount;
+        return documentHashes.length;
     }
 
     /**

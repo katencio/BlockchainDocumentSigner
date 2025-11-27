@@ -64,12 +64,11 @@ contract DocumentRegistryTest is Test {
         assertTrue(registry.isDocumentStored(TEST_HASH));
         assertEq(registry.getDocumentCount(), 1);
         
-        // Verificar información del documento
-        DocumentRegistry.Document memory doc = registry.getDocumentInfo(TEST_HASH);
-        assertEq(doc.hash, TEST_HASH);
-        assertEq(doc.timestamp, timestamp);
-        assertEq(doc.signer, signer);
-        assertEq(keccak256(doc.signature), keccak256(signature));
+        // Verificar información del documento (nuevo formato optimizado)
+        (uint256 docTimestamp, address docSigner, bytes memory docSignature) = registry.getDocumentInfo(TEST_HASH);
+        assertEq(docTimestamp, timestamp);
+        assertEq(docSigner, signer);
+        assertEq(keccak256(docSignature), keccak256(signature));
     }
 
     /**
@@ -207,13 +206,12 @@ contract DocumentRegistryTest is Test {
             signer
         );
         
-        // Obtener información
-        DocumentRegistry.Document memory doc = registry.getDocumentInfo(TEST_HASH);
+        // Obtener información (nuevo formato optimizado)
+        (uint256 docTimestamp, address docSigner, bytes memory docSignature) = registry.getDocumentInfo(TEST_HASH);
         
-        assertEq(doc.hash, TEST_HASH);
-        assertEq(doc.timestamp, timestamp);
-        assertEq(doc.signer, signer);
-        assertEq(keccak256(doc.signature), keccak256(signature));
+        assertEq(docTimestamp, timestamp);
+        assertEq(docSigner, signer);
+        assertEq(keccak256(docSignature), keccak256(signature));
     }
 
     /**
@@ -366,8 +364,8 @@ contract DocumentRegistryTest is Test {
         assertTrue(registry.isDocumentStored(TEST_HASH));
         
         // Verificar que el signer no es address(0)
-        DocumentRegistry.Document memory doc = registry.getDocumentInfo(TEST_HASH);
-        assertNotEq(doc.signer, address(0));
+        (, address docSigner, ) = registry.getDocumentInfo(TEST_HASH);
+        assertNotEq(docSigner, address(0));
     }
 }
 
